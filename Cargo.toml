@@ -1,0 +1,20 @@
+[package]
+name = "herculex-stm32g4xx"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+drs-0x01 = "0.3.0"
+embedded-hal = "0.2.7"
+panic-halt = "0.2.0"
+log = "0.4.11"
+cortex-m-rt = "0.7"
+cortex-m = "0.7.7"
+cortex-m-semihosting = "0.5.0"
+nb = "0.1.2"
+
+[dependencies.stm32g4xx-hal]
+git = "https://github.com/stm32-rs/stm32g4xx-hal.git"
+features = ["stm32g431"]
