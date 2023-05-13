@@ -4,25 +4,25 @@ use hal::prelude::*;
 use hal::stm32;
 use hal::interrupt;
 use hal::gpio::Alternate;
-use hal::gpio::gpioa::{PA2, PA3};
-use hal::serial::{FifoThreshold, NoDMA, Parity, Serial, StopBits, usart, WordLength};
-use hal::stm32::{Interrupt};
+use hal::gpio::gpioa::{PA10, PA9};
+use hal::serial::{NoDMA};
+use hal::stm32::{Interrupt, NVIC};
 
 use drs_0x01::builder::HerkulexMessage;
-use nb::block;
 use cortex_m;
+
 
 const BUFF_SIZE: usize = 20;
 static mut BUFF_INDEX: usize = 0;
 static mut BUFFER: &mut [u8; BUFF_SIZE] = &mut [0; BUFF_SIZE];
-type USART_Tx = Tx<stm32::USART2, PA2<Alternate<7>>, NoDMA>;
-type USART_Rx = Rx<stm32::USART2, PA3<Alternate<7>>, NoDMA>;
+type UsartTx = Tx<stm32::USART2, PA9<Alternate<7>>, NoDMA>;
+type UsartRx = Rx<stm32::USART2, PA10<Alternate<7>>, NoDMA>;
 
-static mut Rx: Option<USART_Rx> = None;
+static mut RX: Option<UsartRx> = None;
 
 /// A communication for the USART
 pub struct Communication<'a> {
-    tx: &'a mut USART_Tx,
+    tx: &'a mut UsartTx,
 }
 
 /// A trait that implements the communication with a servo.
@@ -36,15 +36,15 @@ pub trait HerkulexCommunication {
 
 impl<'a> Communication<'a> {
     /// Create a new communication with Tx and Rx
-    pub fn new(tx: &'a mut USART_Tx, mut rx: USART_Rx) -> Communication<'a> {
+    pub fn new(tx: &'a mut UsartTx, mut rx: UsartRx) -> Communication<'a> {
         let comm = Communication { tx };
         rx.listen();
         unsafe {
-            cortex_m::peripheral::NVIC::unmask(Interrupt::USART2);
+            cortex_m::peripheral::NVIC::unmask(Interrupt::USART1);
         }
 
         cortex_m::interrupt::free(|_| unsafe {
-            Rx.replace(rx);
+            RX.replace(rx);
         });
         comm
     }
@@ -75,12 +75,12 @@ impl<'a> HerkulexCommunication for Communication<'a> {
 }
 
 #[interrupt]
-unsafe fn USART2() {
+unsafe fn USART1() {
     // When a packet is received, there is at least 3 bytes : header, header, packet size
     let mut packet_size = 3;
     unsafe {
         cortex_m::interrupt::free(|_| {
-            if let Some(rx) = Rx.as_mut() {
+            if let Some(rx) = RX.as_mut() {
                 // If it received a packet and we have not read it entirely yet
                 while rx.is_rxne() || BUFF_INDEX < packet_size {
                     // Read the byte
@@ -101,7 +101,10 @@ unsafe fn USART2() {
                         BUFF_INDEX += 1;
                     }
                 }
-                BUFF_INDEX = 0;
+                if !NVIC::is_pending(Interrupt::USART1){
+                    NVIC::unpend(Interrupt::USART1);
+                    BUFF_INDEX = 0;
+                }
             };
         })
     }
