@@ -15,8 +15,8 @@ use cortex_m;
 const BUFF_SIZE: usize = 20;
 static mut BUFF_INDEX: usize = 0;
 static mut BUFFER: &mut [u8; BUFF_SIZE] = &mut [0; BUFF_SIZE];
-type UsartTx = Tx<stm32::USART2, PA9<Alternate<7>>, NoDMA>;
-type UsartRx = Rx<stm32::USART2, PA10<Alternate<7>>, NoDMA>;
+type UsartTx = Tx<stm32::USART1, PA9<Alternate<7>>, NoDMA>;
+type UsartRx = Rx<stm32::USART1 , PA10<Alternate<7>>, NoDMA>;
 
 static mut RX: Option<UsartRx> = None;
 
